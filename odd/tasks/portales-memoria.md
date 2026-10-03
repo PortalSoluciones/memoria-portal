@@ -114,7 +114,7 @@ five core tools carry the value, and the rest can be added one handler at a time
 - [x] T2 — Edge Function MCP: token auth plus the five core tools.
 - [x] T3 — Team and project tools: `mem_list_projects`, `mem_whoami`, and the `author` filter.
 - [x] T4 — OpenCode remote MCP config and the per-member onboarding steps (one token each).
-- [ ] T5 — End-to-end check: two tokens in the same project save, search, and attribute correctly.
+- [x] T5 — End-to-end check: two tokens in the same project save, search, and attribute correctly.
 
 ## Authorized scope
 
@@ -156,6 +156,12 @@ already shipped in T2); redeployed to project `vfjgwyiqlesbuudhulcf`.
 T4 applied: `scripts/add-member.mjs` (dependency-free onboarding: generates a 256-bit token, stores
 only its SHA-256) and `README.md` (deploy, onboarding, per-harness connection, tools). The stdio
 bridge is documented as the fallback for local-only harnesses and deferred until one is adopted.
+T5 verified end-to-end against the deployed function with two member tokens (`ana`, `beto`):
+`mem_whoami` returns each member; ana's shared memory is found by beto and attributed to ana; a
+`topic_key` re-save updates one row and bumps `revision_count` (1 → 2); ana's `personal` memory is
+invisible to beto but visible to ana; the `author` filter works; `mem_list_projects` returns
+`portales`. Test members and their test observations still exist in the database (tokens were exposed
+in a chat transcript — rotate or delete them before real use).
 
 ## Verification evidence
 
@@ -180,3 +186,11 @@ bridge is documented as the fallback for local-only harnesses and deferred until
 - T4: `node --check scripts/add-member.mjs` — syntax OK; SHA-256 convention verified
   (`sha256("abc")` = `ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad`), matching the
   Edge Function. Member creation itself needs the service-role key, so the user runs it.
+- T5 round-trip against `https://vfjgwyiqlesbuudhulcf.supabase.co/functions/v1/mcp`:
+  - `mem_whoami` (ana) → `{name:"ana", default_project:"portales"}`; (beto) → `{name:"beto", ...}`.
+  - `mem_save` shared with `topic_key test/t5-shared` → `{id:1, revision_count:1, created:true}`;
+    same topic again → `{id:1, revision_count:2, created:false}` (upsert, one row).
+  - beto `mem_search "actualizada"` → finds id 1, `author:"ana"`, `scope:"shared"`.
+  - ana `mem_save` `scope:personal` → beto `mem_search "privada zzz"` → 0 results; ana → 1 result.
+  - beto `mem_search author=ana "note"` → 1; `author=beto "note"` → 0.
+  - beto `mem_list_projects` → `["portales"]`.
