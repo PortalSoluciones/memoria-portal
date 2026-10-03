@@ -44,6 +44,14 @@ Give the printed token to that member; it is never stored in plaintext. The **se
 which replaced the legacy `service_role` key) is required because `members` has RLS enabled; the
 publishable key (`sb_publishable_...`) will not work.
 
+Remove a member and every observation they authored (offboarding / test cleanup):
+
+```sh
+SUPABASE_URL=https://vfjgwyiqlesbuudhulcf.supabase.co \
+SUPABASE_SECRET_KEY=<secret-key> \
+node scripts/remove-member.mjs ana
+```
+
 ## Connect an agent
 
 The server is plain MCP, so any harness that supports remote MCP works. Set the member's token in
