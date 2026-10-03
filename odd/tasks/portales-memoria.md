@@ -113,7 +113,7 @@ five core tools carry the value, and the rest can be added one handler at a time
       indexes; record one member and its token hash.
 - [x] T2 — Edge Function MCP: token auth plus the five core tools.
 - [x] T3 — Team and project tools: `mem_list_projects`, `mem_whoami`, and the `author` filter.
-- [ ] T4 — OpenCode remote MCP config and the per-member onboarding steps (one token each).
+- [x] T4 — OpenCode remote MCP config and the per-member onboarding steps (one token each).
 - [ ] T5 — End-to-end check: two tokens in the same project save, search, and attribute correctly.
 
 ## Authorized scope
@@ -153,6 +153,9 @@ SDK, web-standard transport) with bearer-token auth (SHA-256 → `members`) and 
 `vfjgwyiqlesbuudhulcf`. Full round-trip tool calls are not runtime-tested yet (no members — T4/T5).
 T3 applied: `mem_whoami` and `mem_list_projects` added to the same function (the `author` filter
 already shipped in T2); redeployed to project `vfjgwyiqlesbuudhulcf`.
+T4 applied: `scripts/add-member.mjs` (dependency-free onboarding: generates a 256-bit token, stores
+only its SHA-256) and `README.md` (deploy, onboarding, per-harness connection, tools). The stdio
+bridge is documented as the fallback for local-only harnesses and deferred until one is adopted.
 
 ## Verification evidence
 
@@ -174,3 +177,6 @@ already shipped in T2); redeployed to project `vfjgwyiqlesbuudhulcf`.
   reason `operator_disposition`); the functional verification above stands.
 - T3 redeploy: `supabase functions deploy mcp` OK; `curl.exe` with no token → `401 Unauthorized`.
   `mem_whoami` and `mem_list_projects` are not runtime-tested (no members yet — T4/T5).
+- T4: `node --check scripts/add-member.mjs` — syntax OK; SHA-256 convention verified
+  (`sha256("abc")` = `ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad`), matching the
+  Edge Function. Member creation itself needs the service-role key, so the user runs it.
