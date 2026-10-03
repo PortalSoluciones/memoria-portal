@@ -111,7 +111,7 @@ five core tools carry the value, and the rest can be added one handler at a time
 
 - [x] T1 — Supabase schema: `members` and `observations`, the FTS index, and the topic-upsert
       indexes; record one member and its token hash.
-- [ ] T2 — Edge Function MCP: token auth plus the five core tools.
+- [x] T2 — Edge Function MCP: token auth plus the five core tools.
 - [ ] T3 — Team and project tools: `mem_list_projects`, `mem_whoami`, and the `author` filter.
 - [ ] T4 — OpenCode remote MCP config and the per-member onboarding steps (one token each).
 - [ ] T5 — End-to-end check: two tokens in the same project save, search, and attribute correctly.
@@ -147,7 +147,10 @@ Project scaffolded and plan recorded. T1 applied: `supabase init` + `supabase li
 inside the project; migration `20261003000000_init.sql` pushed to the remote database (project
 `vfjgwyiqlesbuudhulcf`). Tables `members` and `observations` exist remotely with the FTS index, the
 project/author query indexes, and the two topic-upsert unique indexes; RLS is enabled with no
-policies. `supabase/seed.sql` documents the token-hashing convention. No Edge Function yet.
+policies. `supabase/seed.sql` documents the token-hashing convention. T2 applied: `supabase/functions/mcp/index.ts` — a stateless MCP server over Streamable HTTP (official
+SDK, web-standard transport) with bearer-token auth (SHA-256 → `members`) and the five core tools;
+`supabase/config.toml` sets `[functions.mcp] verify_jwt = false`. Deployed to project
+`vfjgwyiqlesbuudhulcf`. Full round-trip tool calls are not runtime-tested yet (no members — T4/T5).
 
 ## Verification evidence
 
@@ -157,3 +160,13 @@ policies. `supabase/seed.sql` documents the token-hashing convention. No Edge Fu
 - Notice during push: `extension "pgcrypto" already exists, skipping` (expected on Supabase).
 - CLI warned it could not cache the migrations catalog because Docker Desktop is not running; that
   affects only the local `db diff` cache, not the remote apply.
+- `supabase functions deploy mcp` — deployed to project `vfjgwyiqlesbuudhulcf`; server-side bundling
+  validated the `npm:`/`jsr:` imports.
+- `curl.exe -i https://vfjgwyiqlesbuudhulcf.supabase.co/functions/v1/mcp` (no token) → `401
+  Unauthorized`, `WWW-Authenticate: Bearer realm="portales-memoria"`.
+- same request with `-H "Authorization: Bearer bogus"` → `401 Unauthorized`.
+- Native review (RDD) could not run in this session: the OpenCode review transport refused the
+  binding (`immutable_review_transport_unsupported`, then `opencode_review_transport_binding_invalid`)
+  because the session is rooted at `D:\proyect\PortalesCode`, not the reviewed repo
+  `portales-memoria`. The transaction was abandoned per the user's decision (`review/abandon`,
+  reason `operator_disposition`); the functional verification above stands.
