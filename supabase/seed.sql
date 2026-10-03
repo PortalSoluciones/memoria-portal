@@ -1,0 +1,22 @@
+-- portales-memoria — seed / onboarding reference.
+-- Runs only on a local `supabase db reset`. The remote project is seeded by hand
+-- (dashboard SQL editor or a script) so no dev token ever lands in production.
+
+-- Token convention (must match the MCP Edge Function):
+--   token_hash = lowercase hex SHA-256 of the raw bearer token.
+-- The Edge Function computes SHA-256 (Web Crypto) of the incoming token and looks
+-- up a member by that hash. Rotate by generating a new token and updating the row.
+
+-- Create a member (replace <raw-token> with a fresh 256-bit secret):
+--
+--   insert into public.members (name, token_hash, default_project)
+--   values (
+--     'ana',
+--     encode(extensions.digest('<raw-token>', 'sha256'), 'hex'),
+--     'portales'
+--   );
+--
+-- Generate a token from a shell:
+--   openssl rand -hex 32
+-- or from PowerShell:
+--   [Convert]::ToHexString((1..32 | ForEach-Object { Get-Random -Max 256 })).ToLower()
