@@ -370,6 +370,37 @@ function buildServer(caller: Caller): McpServer {
     }),
   )
 
+  server.registerTool(
+    'mem_whoami',
+    {
+      description: 'Return the authenticated caller (id, name, default project). Use it to verify token wiring.',
+      inputSchema: {},
+    },
+    wrap(async () => ok({ id: caller.id, name: caller.name, default_project: caller.default_project })),
+  )
+
+  server.registerTool(
+    'mem_list_projects',
+    {
+      description:
+        "List project names visible to the caller, plus the caller's default project. Use it to discover where memories live.",
+      inputSchema: {},
+    },
+    wrap(async () => {
+      // ponytail: PostgREST has no DISTINCT, so select the project column of visible rows and
+      // dedupe in JS. Fine at team scale; add an RPC if the table ever grows large.
+      const { data, error } = await admin
+        .from('observations')
+        .select('project')
+        .is('deleted_at', null)
+        .or(visibleFilter(caller.id))
+      if (error) throw new Error(error.message)
+      const projects = new Set<string>((data ?? []).map((row: any) => row.project as string))
+      projects.add(caller.default_project)
+      return ok({ projects: [...projects].sort() })
+    }),
+  )
+
   return server
 }
 

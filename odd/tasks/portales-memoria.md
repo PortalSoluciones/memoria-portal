@@ -112,7 +112,7 @@ five core tools carry the value, and the rest can be added one handler at a time
 - [x] T1 — Supabase schema: `members` and `observations`, the FTS index, and the topic-upsert
       indexes; record one member and its token hash.
 - [x] T2 — Edge Function MCP: token auth plus the five core tools.
-- [ ] T3 — Team and project tools: `mem_list_projects`, `mem_whoami`, and the `author` filter.
+- [x] T3 — Team and project tools: `mem_list_projects`, `mem_whoami`, and the `author` filter.
 - [ ] T4 — OpenCode remote MCP config and the per-member onboarding steps (one token each).
 - [ ] T5 — End-to-end check: two tokens in the same project save, search, and attribute correctly.
 
@@ -127,7 +127,7 @@ Project directory `D:\proyect\PortalesCode\portales-memoria`. Files: `supabase/m
 |------|-------|------------------|
 | T1 | delegated | schema is non-trivial; one writer |
 | T2 | delegated | the core function; one writer |
-| T3 | delegated | same function, continues T2 |
+| T3 | inline | two small tool registrations in a file already read; no unresolved design |
 | T4 | inline | one config file plus a short README |
 | T5 | inline | a two-token check against the live endpoint |
 
@@ -151,6 +151,8 @@ policies. `supabase/seed.sql` documents the token-hashing convention. T2 applied
 SDK, web-standard transport) with bearer-token auth (SHA-256 → `members`) and the five core tools;
 `supabase/config.toml` sets `[functions.mcp] verify_jwt = false`. Deployed to project
 `vfjgwyiqlesbuudhulcf`. Full round-trip tool calls are not runtime-tested yet (no members — T4/T5).
+T3 applied: `mem_whoami` and `mem_list_projects` added to the same function (the `author` filter
+already shipped in T2); redeployed to project `vfjgwyiqlesbuudhulcf`.
 
 ## Verification evidence
 
@@ -170,3 +172,5 @@ SDK, web-standard transport) with bearer-token auth (SHA-256 → `members`) and 
   because the session is rooted at `D:\proyect\PortalesCode`, not the reviewed repo
   `portales-memoria`. The transaction was abandoned per the user's decision (`review/abandon`,
   reason `operator_disposition`); the functional verification above stands.
+- T3 redeploy: `supabase functions deploy mcp` OK; `curl.exe` with no token → `401 Unauthorized`.
+  `mem_whoami` and `mem_list_projects` are not runtime-tested (no members yet — T4/T5).

@@ -70,6 +70,6 @@ team operates.
 
 - [x] T1 — Supabase schema applied (migration `20261003000000_init.sql`).
 - [x] T2 — Edge Function MCP: token auth plus the five core tools (deployed; review abandoned).
-- [ ] T3 — Team/project tools: `mem_list_projects`, `mem_whoami`, and the author filter.
+- [x] T3 — Team/project tools: `mem_list_projects`, `mem_whoami`, and the author filter.
 - [ ] T4 — Client config (remote MCP + stdio bridge) plus per-member onboarding.
 - [ ] T5 — End-to-end check with two tokens: save, search, attribute.
