@@ -36,11 +36,13 @@ Each teammate gets one token. The script generates it, stores only its hash, and
 
 ```sh
 SUPABASE_URL=https://vfjgwyiqlesbuudhulcf.supabase.co \
-SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
+SUPABASE_SECRET_KEY=<secret-key> \
 node scripts/add-member.mjs ana portales
 ```
 
-Give the printed token to that member; it is never stored in plaintext.
+Give the printed token to that member; it is never stored in plaintext. The **secret key** (`sb_secret_...`,
+which replaced the legacy `service_role` key) is required because `members` has RLS enabled; the
+publishable key (`sb_publishable_...`) will not work.
 
 ## Connect an agent
 

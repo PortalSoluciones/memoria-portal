@@ -2,7 +2,7 @@
 // Create a portales-memoria member.
 //
 // Usage:
-//   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/add-member.mjs <name> [default_project]
+//   SUPABASE_URL=... SUPABASE_SECRET_KEY=... node scripts/add-member.mjs <name> [default_project]
 //
 // Prints the raw token ONCE. Store it as that member's PORTALES_MEMORY_TOKEN; only its
 // SHA-256 is kept in the database (members.token_hash). No dependencies: uses global fetch.
@@ -10,11 +10,12 @@
 import { createHash, randomBytes } from 'node:crypto'
 
 const url = process.env.SUPABASE_URL
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+// New key name (sb_secret_...) or the legacy service_role name; both are the RLS-bypassing secret.
+const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 const [name, defaultProject = 'portales'] = process.argv.slice(2)
 
 if (!url || !key) {
-  console.error('Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY first.')
+  console.error('Set SUPABASE_URL and SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) first.')
   process.exit(1)
 }
 if (!name) {
