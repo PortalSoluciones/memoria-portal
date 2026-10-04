@@ -122,7 +122,7 @@ five core tools carry the value, and the rest can be added one handler at a time
 - [x] T7 — Agent-agnostic memory skill: a repo-versioned `SKILL.md` teaching WHEN to save (decision,
       bugfix, discovery, convention, end-of-session → `mem_session_summary`), how to choose
       `area`/`project`, `shared` vs `personal`, and `topic_key`; install steps per harness.
-- [ ] T8 — Node CLI: a dependency-free CLI against the same MCP endpoint (`save`/`search`/`context`/
+- [x] T8 — Node CLI: a dependency-free CLI against the same MCP endpoint (`save`/`search`/`context`/
       `areas`/`whoami`) as a fallback for local-only harnesses and for scripting.
 - [x] T9 — Keep-warm ping: a scheduled GitHub Action that hits the MCP endpoint with a dummy
       `Bearer` header so the function's members SELECT keeps the free-tier database active.
@@ -202,6 +202,11 @@ fixed set (`code`, `render`, `diseno`, `arte`, `redes`); `mem_list_areas` return
 unknown area is rejected with `area must be one of: ...`. Behavior change: org-wide saves with no area
 are no longer possible. Deployed. A deeper per-project allowlist is deferred: the server only sees the
 payload, so area-scoping is a backstop, not proof of the work's origin.
+T8 applied: `scripts/mem.mjs`, a dependency-free Node CLI (`whoami`, `areas`, `projects`, `save`,
+`search`, `context`) over the same MCP endpoint with `PORTALES_MEMORY_TOKEN`; handles the SSE response
+and unwraps tool errors, with a `--selftest` for the parsing. The skill also gained a required human
+gate: before the first save in a conversation the agent asks whether the work is a Portales project and
+which area, and does not save until the human confirms.
 
 ## Verification evidence
 
@@ -254,6 +259,12 @@ payload, so area-scoping is a backstop, not proof of the work's origin.
   the read-only verifier sub-agent was unavailable this session (runtime: free-tier model only usable
   within OpenCode). The writer self-verification and the parent checks above stand; the independent
   result is preserved as unavailable, not PASS.
-- T10: `supabase functions deploy mcp` OK (edge-runtime bundling validated the TS); `curl.exe` no token
-  → `401`. The area guard itself is code-reviewed; a live tool-call test needs a member token (none
-  available in this session), so it is not runtime-verified yet.
+- T10 verified live with a member token against the deployed function:
+  - `mem_save` `area:"notaportales"` → `isError`, `area must be one of: code, render, diseno, arte, redes`.
+  - `mem_list_areas` → `["code","render","diseno","arte","redes"]`.
+  - `mem_save` `area:"code"` `scope:"personal"` → `{id:5, revision_count:1, created:true}` (a personal
+    test row, id 5; invisible to the team).
+- T8 verified: `node --check scripts/mem.mjs` OK; `node scripts/mem.mjs --selftest` OK; live
+  `whoami` → Stefan (organization `portales`), `areas` → the fixed set, `search` → 0 results.
+- MCP transport confirmed: stateless Streamable HTTP — no session id; `tools/call` works as a single
+  POST with the bearer token; responses are SSE (`event: message` / `data: {json}`).

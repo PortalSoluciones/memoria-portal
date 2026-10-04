@@ -67,7 +67,16 @@ project's `AGENTS.md` / `CLAUDE.md`.
 Call `mem_whoami`; it must return the member's name. A `401` means the token is missing or wrong.
 `mem_list_areas` / `mem_list_projects` should show the team's existing memory.
 
-## CLI (optional — T8, in progress)
+## CLI (optional)
 
-A dependency-free `scripts/mem.mjs` will expose `save` / `search` / `context` / `areas` / `whoami`
-against the same endpoint, for scripting and for harnesses that only support local (stdio) MCP.
+`scripts/mem.mjs` is a dependency-free Node 18+ CLI against the same endpoint — for scripting and for
+harnesses that only support local (stdio) MCP. It needs `PORTALES_MEMORY_TOKEN`:
+
+```sh
+node scripts/mem.mjs whoami
+node scripts/mem.mjs areas
+node scripts/mem.mjs projects [--area code]
+node scripts/mem.mjs save <area> <title> <content> [--project P] [--scope shared|personal] [--topic K]
+node scripts/mem.mjs search "<query>" [--area A] [--project P] [--limit N]
+node scripts/mem.mjs context [--area A] [--limit N]
+```
