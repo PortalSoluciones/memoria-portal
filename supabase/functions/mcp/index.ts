@@ -107,6 +107,16 @@ const score = (row: any, terms: string[]): number => {
 const clampLimit = (limit: number | undefined, fallback: number): number =>
   Math.min(Math.max(limit ?? fallback, 1), 50)
 
+// The team's fixed domains. `area` is required on saves and must be one of
+// these, so every shared memory is anchored to a Portales domain and a save
+// from unrelated work is rejected. ponytail: a constant, not a table — areas
+// change rarely; move to a table only if they start changing without a redeploy.
+const AREAS = ['code', 'render', 'diseno', 'arte', 'redes']
+const areaSchema = z
+  .string()
+  .min(1)
+  .refine((a) => AREAS.includes(a), { message: `area must be one of: ${AREAS.join(', ')}` })
+
 // ---------------------------------------------------------------------------
 // Tools
 // ---------------------------------------------------------------------------
@@ -123,7 +133,7 @@ function buildServer(caller: Caller): McpServer {
         title: z.string().min(1).describe('Short searchable title'),
         content: z.string().min(1).describe('Full observation content (Markdown allowed)'),
         type: z.string().min(1).optional().describe("Category, e.g. 'manual', 'decision', 'bugfix'. Default 'manual'"),
-        area: z.string().min(1).optional().describe('Optional area level; omit for organization-wide'),
+        area: areaSchema.describe('Required. One of: code, render, diseno, arte, redes'),
         project: z.string().min(1).optional().describe('Optional project level; omit for organization-wide'),
         scope: z.enum(['shared', 'personal']).optional().describe("Visibility. Default 'shared'"),
         topic_key: z.string().min(1).optional().describe('Stable key for evolving topics; reuse it to update instead of duplicating'),
@@ -133,7 +143,7 @@ function buildServer(caller: Caller): McpServer {
       title: string
       content: string
       type?: string
-      area?: string
+      area: string
       project?: string
       scope?: 'shared' | 'personal'
       topic_key?: string
@@ -142,7 +152,7 @@ function buildServer(caller: Caller): McpServer {
       const content = args.content
       const type = args.type ?? 'manual'
       const organization = caller.default_organization
-      const area = args.area ?? null
+      const area = args.area
       const project = args.project ?? null
       const scope = args.scope ?? 'shared'
       const topicKey = args.topic_key ?? null
@@ -371,12 +381,12 @@ function buildServer(caller: Caller): McpServer {
       inputSchema: {
         content: z.string().min(1).describe('Full summary content (Markdown allowed)'),
         title: z.string().min(1).optional().describe('Defaults to the first line of content, truncated to 80 chars'),
-        area: z.string().min(1).optional().describe('Optional area level; omit for organization-wide'),
+        area: areaSchema.describe('Required. One of: code, render, diseno, arte, redes'),
         project: z.string().min(1).optional().describe('Optional project level; omit for organization-wide'),
         scope: z.enum(['shared', 'personal']).optional().describe("Visibility. Default 'shared'"),
       },
     },
-    wrap(async (args: { content: string; title?: string; area?: string; project?: string; scope?: 'shared' | 'personal' }) => {
+    wrap(async (args: { content: string; title?: string; area: string; project?: string; scope?: 'shared' | 'personal' }) => {
       const scope = args.scope ?? 'shared'
       const title = args.title ?? deriveTitle(args.content)
 
@@ -384,7 +394,7 @@ function buildServer(caller: Caller): McpServer {
         .from('observations')
         .insert({
           organization: caller.default_organization,
-          area: args.area ?? null,
+          area: args.area,
           project: args.project ?? null,
           author_id: caller.id,
           scope,
@@ -413,23 +423,10 @@ function buildServer(caller: Caller): McpServer {
     'mem_list_areas',
     {
       description:
-        "List area names in the caller's organization, taken from non-deleted observations visible to the caller. Use it to discover where memories live.",
+        'List the team\'s areas. `area` is required on saves and must be one of these.',
       inputSchema: {},
     },
-    wrap(async () => {
-      // ponytail: PostgREST has no DISTINCT, so select the area column of visible rows and
-      // dedupe in JS. Fine at team scale; add an RPC if the table ever grows large.
-      const { data, error } = await admin
-        .from('observations')
-        .select('area')
-        .eq('organization', caller.default_organization)
-        .is('deleted_at', null)
-        .or(visibleFilter(caller.id))
-      if (error) throw new Error(error.message)
-      const areas = new Set<string>()
-      for (const row of data ?? []) if (row.area) areas.add(row.area)
-      return ok({ areas: [...areas].sort() })
-    }),
+    wrap(async () => ok({ areas: [...AREAS] })),
   )
 
   server.registerTool(
