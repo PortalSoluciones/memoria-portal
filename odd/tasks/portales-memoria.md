@@ -241,3 +241,7 @@ free-tier pause).
   `Authorization: Bearer keep-warm` → `401` (the members SELECT runs before the 401), and no:
   `Bearer` → `401` (early return, no query). Confirms the dummy-token mechanism is what keeps the
   project active.
+- Independent verification (RDD OFF; the assess tier was high from a `shell` signal in the workflow):
+  the read-only verifier sub-agent was unavailable this session (runtime: free-tier model only usable
+  within OpenCode). The writer self-verification and the parent checks above stand; the independent
+  result is preserved as unavailable, not PASS.
