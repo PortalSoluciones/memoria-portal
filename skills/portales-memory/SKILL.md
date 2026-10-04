@@ -1,6 +1,6 @@
 ---
 name: portales-memory
-description: Save to the Portales shared memory whenever you make a decision, fix a bug, discover something non-obvious, establish a convention, change configuration, or end a session; and search it before starting work on a topic that may have prior memory.
+description: Save to the Portales shared memory whenever you make a decision, fix a bug, discover something non-obvious, establish a convention, change configuration, or end a session; and search it before starting work on a topic that may have prior memory. Use it only while working on a Portales project.
 ---
 
 # portales-memory
@@ -8,6 +8,20 @@ description: Save to the Portales shared memory whenever you make a decision, fi
 Shared, always-online team memory: Supabase Postgres behind one MCP Edge Function over Streamable
 HTTP. Endpoint `https://vfjgwyiqlesbuudhulcf.supabase.co/functions/v1/mcp`, bearer token per member
 read from env `PORTALES_MEMORY_TOKEN`. Harness connection config: see the repo README.
+
+## Only for Portales projects
+
+This memory belongs to the Portales team. Save **only** when the work you are doing is a Portales
+project. The organization is fixed to `portales`, but nothing in the server checks the project, so
+this rule is on you:
+
+- Before saving, confirm the project is ours: the repo is under the Portales org
+  (e.g. `github.com/PortalSoluciones/...`), or it is a project the memory already knows (check with
+  `mem_list_projects`), or you know it is ours.
+- If you are working on anything unrelated — a personal repo, another company, another client — do
+  **not** save here, even though the MCP is connected. Keep that knowledge out of the team memory.
+- If you are unsure, do not save. Reading (`mem_search` / `mem_context`) is low-risk, but the same
+  intent applies: do not fill the team memory with foreign work.
 
 ## When to save
 
