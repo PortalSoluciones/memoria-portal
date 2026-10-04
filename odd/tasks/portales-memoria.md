@@ -210,6 +210,11 @@ T8 applied: `scripts/mem.mjs`, a dependency-free Node CLI (`whoami`, `areas`, `p
 and unwraps tool errors, with a `--selftest` for the parsing. The skill also gained a required human
 gate: before the first save in a conversation the agent asks whether the work is a Portales project and
 which area, and does not save until the human confirms.
+T11 applied: `general` added to `AREAS` in the Edge Function; both `areaSchema.describe` strings now
+derive from `AREAS.join(', ')` so the description cannot drift from the validation set. The skill,
+README, and AGENTS list `general` as the area for organization-level notes that fit no single domain,
+and keep the "not an escape for unrelated work" guard explicit. Deployed to project
+`vfjgwyiqlesbuudhulcf`.
 
 ## Verification evidence
 
@@ -271,3 +276,9 @@ which area, and does not save until the human confirms.
   `whoami` → Stefan (organization `portales`), `areas` → the fixed set, `search` → 0 results.
 - MCP transport confirmed: stateless Streamable HTTP — no session id; `tools/call` works as a single
   POST with the bearer token; responses are SSE (`event: message` / `data: {json}`).
+- T11 verified live after `supabase functions deploy mcp`:
+  - `mem_list_areas` → `["code","render","diseno","arte","redes","general"]`.
+  - `mem_save` `area:"notaportales"` → `isError`, `area must be one of: code, render, diseno, arte, redes, general`.
+  - `mem_save` `area:"general"` → `{id:8, revision_count:1, created:true}` — the area is accepted end-to-end (id 8).
+  - No `CHECK` constraint on `area` in the migrations; the function constant is the single source. No
+    deploy workflow exists, so propagation to every machine is one `supabase functions deploy mcp`.
