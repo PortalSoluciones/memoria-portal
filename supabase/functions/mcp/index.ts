@@ -108,10 +108,11 @@ const clampLimit = (limit: number | undefined, fallback: number): number =>
   Math.min(Math.max(limit ?? fallback, 1), 50)
 
 // The team's fixed domains. `area` is required on saves and must be one of
-// these, so every shared memory is anchored to a Portales domain and a save
-// from unrelated work is rejected. ponytail: a constant, not a table — areas
-// change rarely; move to a table only if they start changing without a redeploy.
-const AREAS = ['code', 'render', 'diseno', 'arte', 'redes']
+// these. Most areas anchor a memory to a Portales domain; `general` is the
+// catch-all for organization-level notes that belong to no single domain.
+// ponytail: a constant, not a table — areas change rarely; move to a table
+// only if they start changing without a redeploy.
+const AREAS = ['code', 'render', 'diseno', 'arte', 'redes', 'general']
 const areaSchema = z
   .string()
   .min(1)
@@ -133,7 +134,7 @@ function buildServer(caller: Caller): McpServer {
         title: z.string().min(1).describe('Short searchable title'),
         content: z.string().min(1).describe('Full observation content (Markdown allowed)'),
         type: z.string().min(1).optional().describe("Category, e.g. 'manual', 'decision', 'bugfix'. Default 'manual'"),
-        area: areaSchema.describe('Required. One of: code, render, diseno, arte, redes'),
+        area: areaSchema.describe(`Required. One of: ${AREAS.join(', ')}`),
         project: z.string().min(1).optional().describe('Optional project level; omit for organization-wide'),
         scope: z.enum(['shared', 'personal']).optional().describe("Visibility. Default 'shared'"),
         topic_key: z.string().min(1).optional().describe('Stable key for evolving topics; reuse it to update instead of duplicating'),
@@ -381,7 +382,7 @@ function buildServer(caller: Caller): McpServer {
       inputSchema: {
         content: z.string().min(1).describe('Full summary content (Markdown allowed)'),
         title: z.string().min(1).optional().describe('Defaults to the first line of content, truncated to 80 chars'),
-        area: areaSchema.describe('Required. One of: code, render, diseno, arte, redes'),
+        area: areaSchema.describe(`Required. One of: ${AREAS.join(', ')}`),
         project: z.string().min(1).optional().describe('Optional project level; omit for organization-wide'),
         scope: z.enum(['shared', 'personal']).optional().describe("Visibility. Default 'shared'"),
       },
