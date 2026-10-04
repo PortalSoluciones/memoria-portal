@@ -30,6 +30,7 @@ team operates.
 | D9 | New project dir `D:\proyect\PortalesCode\portales-memoria` | Isolates the memory system from the viewer project | A folder inside `visualizador-inmobiliario` |
 | D10 | Agent-agnostic: standard MCP over Streamable HTTP with a bearer `Authorization` header, plus a tiny stdio bridge for harnesses limited to local MCP | Must work in any MCP harness (Claude Code, Codex, Gemini CLI, Cursor, …), not only OpenCode | OpenCode-only remote-MCP config (breaks other harnesses); remote-only with no stdio fallback |
 | D11 | Deploy with the Supabase CLI (`link` + `db push` + `functions deploy`) | The user chose the CLI; credentials are in hand | Deploy from the dashboard |
+| D12 | Memory scope is a 3-level hierarchy organization → area → project; search defaults to the whole organization | The team has areas (Render, Code, Diseño, Arte, Redes) and projects within them; everything must stay reachable | Flat project field; areas as separate projects |
 
 ## Tradeoffs
 
@@ -73,3 +74,4 @@ team operates.
 - [x] T3 — Team/project tools: `mem_list_projects`, `mem_whoami`, and the author filter.
 - [x] T4 — Client config (remote MCP + stdio bridge) plus per-member onboarding.
 - [x] T5 — End-to-end check with two tokens: save, search, attribute.
+- [x] T6 — Hierarchy organization → area → project (migration + function + `mem_list_areas`).

@@ -1,8 +1,10 @@
 // portales-memoria — stateless MCP server over Streamable HTTP.
 // Bearer token -> SHA-256 (lowercase hex) -> members.token_hash; the resolved
-// member is the caller (author + default project). Five tools, service-role
-// access to Postgres: RLS is enabled with no policies, so all visibility
-// rules (shared vs personal, soft delete) are enforced in this file.
+// member is the caller (author + default organization). Scope is a 3-level
+// hierarchy organization -> area -> project; organization always comes from the
+// caller and area/project are optional narrowing. Service-role access to
+// Postgres: RLS is enabled with no policies, so all visibility rules
+// (shared vs personal, soft delete) are enforced in this file.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 
@@ -18,7 +20,7 @@ const admin = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } },
 )
 
-type Caller = { id: string; name: string; default_project: string }
+type Caller = { id: string; name: string; default_organization: string }
 type ToolResult = { content: Array<{ type: 'text'; text: string }>; isError?: boolean }
 
 // ---------------------------------------------------------------------------
@@ -36,7 +38,7 @@ async function authorize(req: Request): Promise<Caller | null> {
 
   const { data, error } = await admin
     .from('members')
-    .select('id, name, default_project')
+    .select('id, name, default_organization')
     .eq('token_hash', hash)
     .maybeSingle()
   if (error) throw new Error(error.message)
@@ -66,6 +68,11 @@ const wrap =
 // the DB (uuid), never from client input, so string interpolation is safe.
 const visibleFilter = (callerId: string): string =>
   `scope.eq.shared,and(scope.eq.personal,author_id.eq.${callerId})`
+
+// PostgREST has no "col IS NOT DISTINCT FROM": match an optional hierarchy level
+// with eq() when provided, IS NULL when omitted (org-wide row).
+const eqOrIsNull = (q: any, col: string, value: string | null): any =>
+  value === null ? q.is(col, null) : q.eq(col, value)
 
 const excerpt = (s: string): string => (s.length > 200 ? `${s.slice(0, 200)}...` : s)
 
@@ -111,12 +118,13 @@ function buildServer(caller: Caller): McpServer {
     'mem_save',
     {
       description:
-        'Persist an observation. With topic_key it upserts: saving the same (project, scope, topic_key) again updates the row and bumps revision_count instead of creating a duplicate. The author is always the caller.',
+        "Persist an observation. With topic_key it upserts: saving the same (organization, area, project, scope, topic_key) again updates the row and bumps revision_count instead of creating a duplicate. The author is always the caller and the organization is always the caller's default_organization.",
       inputSchema: {
         title: z.string().min(1).describe('Short searchable title'),
         content: z.string().min(1).describe('Full observation content (Markdown allowed)'),
         type: z.string().min(1).optional().describe("Category, e.g. 'manual', 'decision', 'bugfix'. Default 'manual'"),
-        project: z.string().min(1).optional().describe("Defaults to the caller's default_project"),
+        area: z.string().min(1).optional().describe('Optional area level; omit for organization-wide'),
+        project: z.string().min(1).optional().describe('Optional project level; omit for organization-wide'),
         scope: z.enum(['shared', 'personal']).optional().describe("Visibility. Default 'shared'"),
         topic_key: z.string().min(1).optional().describe('Stable key for evolving topics; reuse it to update instead of duplicating'),
       },
@@ -125,6 +133,7 @@ function buildServer(caller: Caller): McpServer {
       title: string
       content: string
       type?: string
+      area?: string
       project?: string
       scope?: 'shared' | 'personal'
       topic_key?: string
@@ -132,7 +141,9 @@ function buildServer(caller: Caller): McpServer {
       const title = args.title
       const content = args.content
       const type = args.type ?? 'manual'
-      const project = args.project ?? caller.default_project
+      const organization = caller.default_organization
+      const area = args.area ?? null
+      const project = args.project ?? null
       const scope = args.scope ?? 'shared'
       const topicKey = args.topic_key ?? null
 
@@ -140,10 +151,12 @@ function buildServer(caller: Caller): McpServer {
         let q = admin
           .from('observations')
           .select('id, revision_count')
-          .eq('project', project)
+          .eq('organization', organization)
           .eq('scope', scope)
           .eq('topic_key', key)
           .is('deleted_at', null)
+        q = eqOrIsNull(q, 'area', area)
+        q = eqOrIsNull(q, 'project', project)
         if (scope === 'personal') q = q.eq('author_id', caller.id)
         const { data, error } = await q.maybeSingle()
         if (error) throw new Error(error.message)
@@ -176,6 +189,8 @@ function buildServer(caller: Caller): McpServer {
       const { data, error } = await admin
         .from('observations')
         .insert({
+          organization,
+          area,
           project,
           author_id: caller.id,
           scope,
@@ -201,10 +216,11 @@ function buildServer(caller: Caller): McpServer {
     'mem_search',
     {
       description:
-        'Full-text search (Postgres websearch, config "simple") over non-deleted observations visible to the caller, best matches first then most recent.',
+        'Full-text search (Postgres websearch, config "simple") over non-deleted observations in the caller\'s organization, visible to the caller, best matches first then most recent. area/project narrow the search; omit them to search across the whole organization.',
       inputSchema: {
         query: z.string().min(1).describe('Search text; supports quotes, OR and NOT'),
-        project: z.string().min(1).optional().describe("Defaults to the caller's default_project"),
+        area: z.string().min(1).optional().describe('Narrow to one area'),
+        project: z.string().min(1).optional().describe('Narrow to one project'),
         scope: z.enum(['shared', 'personal']).optional().describe('Restrict to one scope'),
         author: z.string().min(1).optional().describe('Restrict to one member by name'),
         limit: z.number().int().min(1).max(50).optional().describe('Max results. Default 10, max 50'),
@@ -212,12 +228,12 @@ function buildServer(caller: Caller): McpServer {
     },
     wrap(async (args: {
       query: string
+      area?: string
       project?: string
       scope?: 'shared' | 'personal'
       author?: string
       limit?: number
     }) => {
-      const project = args.project ?? caller.default_project
       const limit = clampLimit(args.limit, 10)
 
       let authorId: string | null = null
@@ -230,11 +246,13 @@ function buildServer(caller: Caller): McpServer {
 
       let q = admin
         .from('observations')
-        .select('id, project, scope, type, title, content, topic_key, created_at, author:members(name)')
-        .eq('project', project)
+        .select('id, area, project, scope, type, title, content, topic_key, created_at, author:members(name)')
+        .eq('organization', caller.default_organization)
         .is('deleted_at', null)
         .textSearch('search', args.query, { type: 'websearch', config: 'simple' })
         .or(visibleFilter(caller.id))
+      if (args.area) q = q.eq('area', args.area)
+      if (args.project) q = q.eq('project', args.project)
       if (args.scope) q = q.eq('scope', args.scope)
       if (authorId) q = q.eq('author_id', authorId)
 
@@ -246,6 +264,7 @@ function buildServer(caller: Caller): McpServer {
       const results = (data ?? [])
         .map((row: any) => ({
           id: row.id,
+          area: row.area,
           project: row.project,
           scope: row.scope,
           type: row.type,
@@ -266,23 +285,26 @@ function buildServer(caller: Caller): McpServer {
   server.registerTool(
     'mem_context',
     {
-      description: 'Most recent non-deleted observations visible to the caller, newest first.',
+      description:
+        "Most recent non-deleted observations in the caller's organization, visible to the caller, newest first. area/project narrow the listing; omit them to see the whole organization.",
       inputSchema: {
-        project: z.string().min(1).optional().describe("Defaults to the caller's default_project"),
+        area: z.string().min(1).optional().describe('Narrow to one area'),
+        project: z.string().min(1).optional().describe('Narrow to one project'),
         scope: z.enum(['shared', 'personal']).optional().describe('Restrict to one scope'),
         limit: z.number().int().min(1).max(50).optional().describe('Max results. Default 10, max 50'),
       },
     },
-    wrap(async (args: { project?: string; scope?: 'shared' | 'personal'; limit?: number }) => {
-      const project = args.project ?? caller.default_project
+    wrap(async (args: { area?: string; project?: string; scope?: 'shared' | 'personal'; limit?: number }) => {
       const limit = clampLimit(args.limit, 10)
 
       let q = admin
         .from('observations')
-        .select('id, title, type, scope, created_at, author:members(name)')
-        .eq('project', project)
+        .select('id, title, type, scope, area, project, created_at, author:members(name)')
+        .eq('organization', caller.default_organization)
         .is('deleted_at', null)
         .or(visibleFilter(caller.id))
+      if (args.area) q = q.eq('area', args.area)
+      if (args.project) q = q.eq('project', args.project)
       if (args.scope) q = q.eq('scope', args.scope)
 
       const { data, error } = await q.order('created_at', { ascending: false }).limit(limit)
@@ -293,6 +315,8 @@ function buildServer(caller: Caller): McpServer {
         title: row.title,
         type: row.type,
         scope: row.scope,
+        area: row.area,
+        project: row.project,
         author: row.author?.name ?? null,
         created_at: row.created_at,
       }))
@@ -312,7 +336,7 @@ function buildServer(caller: Caller): McpServer {
       const { data, error } = await admin
         .from('observations')
         .select(
-          'id, project, scope, type, title, content, topic_key, revision_count, author_id, created_at, updated_at, author:members(name)',
+          'id, organization, area, project, scope, type, title, content, topic_key, revision_count, author_id, created_at, updated_at, author:members(name)',
         )
         .eq('id', args.id)
         .is('deleted_at', null)
@@ -323,6 +347,8 @@ function buildServer(caller: Caller): McpServer {
       }
       return ok({
         id: data.id,
+        organization: data.organization,
+        area: data.area,
         project: data.project,
         scope: data.scope,
         type: data.type,
@@ -345,19 +371,21 @@ function buildServer(caller: Caller): McpServer {
       inputSchema: {
         content: z.string().min(1).describe('Full summary content (Markdown allowed)'),
         title: z.string().min(1).optional().describe('Defaults to the first line of content, truncated to 80 chars'),
-        project: z.string().min(1).optional().describe("Defaults to the caller's default_project"),
+        area: z.string().min(1).optional().describe('Optional area level; omit for organization-wide'),
+        project: z.string().min(1).optional().describe('Optional project level; omit for organization-wide'),
         scope: z.enum(['shared', 'personal']).optional().describe("Visibility. Default 'shared'"),
       },
     },
-    wrap(async (args: { content: string; title?: string; project?: string; scope?: 'shared' | 'personal' }) => {
-      const project = args.project ?? caller.default_project
+    wrap(async (args: { content: string; title?: string; area?: string; project?: string; scope?: 'shared' | 'personal' }) => {
       const scope = args.scope ?? 'shared'
       const title = args.title ?? deriveTitle(args.content)
 
       const { data, error } = await admin
         .from('observations')
         .insert({
-          project,
+          organization: caller.default_organization,
+          area: args.area ?? null,
+          project: args.project ?? null,
           author_id: caller.id,
           scope,
           type: 'session_summary',
@@ -373,30 +401,58 @@ function buildServer(caller: Caller): McpServer {
   server.registerTool(
     'mem_whoami',
     {
-      description: 'Return the authenticated caller (id, name, default project). Use it to verify token wiring.',
+      description: 'Return the authenticated caller (id, name, default organization). Use it to verify token wiring.',
       inputSchema: {},
     },
-    wrap(async () => ok({ id: caller.id, name: caller.name, default_project: caller.default_project })),
+    wrap(async () =>
+      ok({ id: caller.id, name: caller.name, default_organization: caller.default_organization }),
+    ),
+  )
+
+  server.registerTool(
+    'mem_list_areas',
+    {
+      description:
+        "List area names in the caller's organization, taken from non-deleted observations visible to the caller. Use it to discover where memories live.",
+      inputSchema: {},
+    },
+    wrap(async () => {
+      // ponytail: PostgREST has no DISTINCT, so select the area column of visible rows and
+      // dedupe in JS. Fine at team scale; add an RPC if the table ever grows large.
+      const { data, error } = await admin
+        .from('observations')
+        .select('area')
+        .eq('organization', caller.default_organization)
+        .is('deleted_at', null)
+        .or(visibleFilter(caller.id))
+      if (error) throw new Error(error.message)
+      const areas = new Set<string>()
+      for (const row of data ?? []) if (row.area) areas.add(row.area)
+      return ok({ areas: [...areas].sort() })
+    }),
   )
 
   server.registerTool(
     'mem_list_projects',
     {
       description:
-        "List project names visible to the caller, plus the caller's default project. Use it to discover where memories live.",
-      inputSchema: {},
+        "List project names in the caller's organization, taken from non-deleted observations visible to the caller, optionally narrowed to one area. Use it to discover where memories live.",
+      inputSchema: {
+        area: z.string().min(1).optional().describe('Only list projects inside this area'),
+      },
     },
-    wrap(async () => {
-      // ponytail: PostgREST has no DISTINCT, so select the project column of visible rows and
-      // dedupe in JS. Fine at team scale; add an RPC if the table ever grows large.
-      const { data, error } = await admin
+    wrap(async (args: { area?: string }) => {
+      let q = admin
         .from('observations')
         .select('project')
+        .eq('organization', caller.default_organization)
         .is('deleted_at', null)
         .or(visibleFilter(caller.id))
+      if (args.area) q = q.eq('area', args.area)
+      const { data, error } = await q
       if (error) throw new Error(error.message)
-      const projects = new Set<string>((data ?? []).map((row: any) => row.project as string))
-      projects.add(caller.default_project)
+      const projects = new Set<string>()
+      for (const row of data ?? []) if (row.project) projects.add(row.project)
       return ok({ projects: [...projects].sort() })
     }),
   )

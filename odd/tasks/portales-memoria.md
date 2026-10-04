@@ -93,12 +93,14 @@ five core tools carry the value, and the rest can be added one handler at a time
 - Supabase Auth is not used: OpenCode's automatic remote-MCP OAuth cannot speak to Supabase Auth as
   an authorization server, so a static per-member token is the smallest thing that gives identity.
 
-### Projects
+### Hierarchy (organization → area → project)
 
-- `project` is an explicit parameter on the tools, defaulting to a value configured per workspace
-  (for the Portales repo, `portales`). Members on the same repo share the default; other repos get
-  their own project name.
-- Projects are created implicitly by the first save. `mem_list_projects` exposes what exists.
+- A memory is scoped by three levels. `organization` is always the caller's `default_organization`
+  (`portales`); `area` and `project` are optional narrowing parameters.
+- Search and context default to the **whole organization** (everything reachable); `area`/`project`
+  narrow the result. Levels are created implicitly by the first save.
+- `mem_list_areas` and `mem_list_projects` (optionally within one area) expose what exists.
+- `topic_key` upserts are scoped to `organization + area + project` (+ author for `personal`).
 
 ### Visibility
 
@@ -115,6 +117,8 @@ five core tools carry the value, and the rest can be added one handler at a time
 - [x] T3 — Team and project tools: `mem_list_projects`, `mem_whoami`, and the `author` filter.
 - [x] T4 — OpenCode remote MCP config and the per-member onboarding steps (one token each).
 - [x] T5 — End-to-end check: two tokens in the same project save, search, and attribute correctly.
+- [x] T6 — Hierarchy organization → area → project: rename/add-columns migration, function `area`/`project`
+      params, `mem_list_areas` / `mem_list_projects`.
 
 ## Authorized scope
 
@@ -130,6 +134,7 @@ Project directory `D:\proyect\PortalesCode\portales-memoria`. Files: `supabase/m
 | T3 | inline | two small tool registrations in a file already read; no unresolved design |
 | T4 | inline | one config file plus a short README |
 | T5 | inline | a two-token check against the live endpoint |
+| T6 | delegated | a migration plus a multi-site function change; one writer |
 
 ## Acceptance criteria
 
@@ -162,6 +167,12 @@ T5 verified end-to-end against the deployed function with two member tokens (`an
 invisible to beto but visible to ana; the `author` filter works; `mem_list_projects` returns
 `portales`. Test members and their test observations still exist in the database (tokens were exposed
 in a chat transcript — rotate or delete them before real use).
+T6 applied: migration `20261003010000_hierarchy.sql` renamed `observations.project` → `organization`,
+added `area` and `project`, renamed `members.default_project` → `default_organization`, and rebuilt the
+scope/topic indexes (topic uniqueness uses `coalesce(area,'')`/`coalesce(project,'')`). The function
+gained `area`/`project` params on `mem_save`/`mem_search`/`mem_context`, plus `mem_list_areas` and an
+org-scoped `mem_list_projects(area?)`; search and context default to the whole organization.
+`scripts/add-member.mjs` and `seed.sql` were updated to the renamed column.
 
 ## Verification evidence
 
@@ -194,3 +205,6 @@ in a chat transcript — rotate or delete them before real use).
   - ana `mem_save` `scope:personal` → beto `mem_search "privada zzz"` → 0 results; ana → 1 result.
   - beto `mem_search author=ana "note"` → 1; `author=beto "note"` → 0.
   - beto `mem_list_projects` → `["portales"]`.
+- T6: `supabase db push` applied `20261003010000_hierarchy.sql`; `supabase functions deploy mcp` OK;
+  `curl.exe` with no token → `401 Unauthorized`. The hierarchy round-trip is not yet run (needs a
+  member token).

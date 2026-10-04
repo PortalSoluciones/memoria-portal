@@ -9,7 +9,7 @@
 
 -- Create a member (replace <raw-token> with a fresh 256-bit secret):
 --
---   insert into public.members (name, token_hash, default_project)
+--   insert into public.members (name, token_hash, default_organization)
 --   values (
 --     'ana',
 --     encode(extensions.digest('<raw-token>', 'sha256'), 'hex'),

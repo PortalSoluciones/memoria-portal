@@ -90,15 +90,18 @@ Codex, Cursor, Windsurf and VS Code Copilot use the same URL plus the `Authoriza
 | Tool | Purpose |
 |------|---------|
 | `mem_save` | Save an observation; upserts on `topic_key`; author from the token |
-| `mem_search` | Full-text search; optional `project`, `scope`, `author` filters |
+| `mem_search` | Full-text search; optional `area`, `project`, `scope`, `author` filters |
 | `mem_context` | Recent observations, newest first, with author |
 | `mem_get_observation` | Full content by id |
 | `mem_session_summary` | Save an end-of-session summary |
-| `mem_list_projects` | Projects the caller can see, plus the default |
+| `mem_list_areas` | Areas in the caller's organization |
+| `mem_list_projects` | Projects in the caller's organization (optionally within one area) |
 | `mem_whoami` | The calling member (verify token wiring) |
 
-Defaults: `project` = the member's `default_project` (`portales`); `scope` = `shared`. A memory with
-`scope: personal` is visible only to its author.
+Memory is scoped by a 3-level hierarchy: **organization → area → project**. The organization is always
+the caller's `default_organization` (`portales`); `area` and `project` are optional. Search and context
+default to the **whole organization** — everything is reachable — and `area`/`project` narrow the result.
+`scope` defaults to `shared`; a `personal` memory is visible only to its author.
 
 ## Notes
 
