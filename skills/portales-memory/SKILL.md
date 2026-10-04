@@ -23,6 +23,17 @@ this rule is on you:
 - If you are unsure, do not save. Reading (`mem_search` / `mem_context`) is low-risk, but the same
   intent applies: do not fill the team memory with foreign work.
 
+## Ask the human first (required gate)
+
+Before your **first save in a conversation**, ask the human to confirm the scope in one question —
+for example: "Antes de guardar en la memoria de Portales: ¿esto es un proyecto de Portales? ¿En qué
+área lo anoto (`code`, `render`, `diseno`, `arte`, `redes`)?"
+
+- Do **not** save until the human answers. Do not infer the area from the code and save on your own.
+- If they confirm, use that area (and project) for the session's saves.
+- If they say it is not a Portales project, do not save to this memory for the session.
+- This human confirmation is what makes the area allowlist meaningful: a wrong area is a wrong memory.
+
 ## When to save
 
 Save at the moment it happens, not later. Saving is internal bookkeeping — it never replaces your
