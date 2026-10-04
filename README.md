@@ -132,7 +132,8 @@ PORTALES_MEMORY_TOKEN=… node scripts/mem.mjs save code "Title" "Content" --pro
 
 Memory is scoped by a 3-level hierarchy: **organization → area → project**. The organization is always
 the caller's `default_organization` (`portales`). On saves, `area` is **required** and must be one of
-`code`, `render`, `diseno`, `arte`, `redes`; `project` is optional. Search and context default to the
+`code`, `render`, `diseno`, `arte`, `redes`, `general` (`general` = organization-level notes that fit
+no single domain); `project` is optional. Search and context default to the
 **whole organization** — everything is reachable — and `area`/`project` narrow the result. `scope`
 defaults to `shared`; a `personal` memory is visible only to its author.
 

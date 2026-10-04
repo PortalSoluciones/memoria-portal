@@ -80,7 +80,7 @@ file. The member owns the token.
 After the member restarts, call `mem_whoami`; it must return their name. A `401` means the token is not
 set or is wrong — repeat section 3.
 
-- `mem_list_areas` → `code`, `render`, `diseno`, `arte`, `redes` (the valid `area` values).
+- `mem_list_areas` → `code`, `render`, `diseno`, `arte`, `redes`, `general` (the valid `area` values).
 - `mem_list_projects` → the projects already in the team memory.
 
 ## CLI (optional)

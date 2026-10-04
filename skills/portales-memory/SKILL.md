@@ -27,7 +27,7 @@ this rule is on you:
 
 Before your **first save in a conversation**, ask the human to confirm the scope in one question —
 for example: "Antes de guardar en la memoria de Portales: ¿esto es un proyecto de Portales? ¿En qué
-área lo anoto (`code`, `render`, `diseno`, `arte`, `redes`)?"
+área lo anoto (`code`, `render`, `diseno`, `arte`, `redes`, `general`)?"
 
 - Do **not** save until the human answers. Do not infer the area from the code and save on your own.
 - If they confirm, use that area (and project) for the session's saves.
@@ -62,11 +62,13 @@ The organization is always the caller's (`portales`) and is automatic — never 
 Hierarchy: organization -> `area` -> `project`.
 
 - `area` **is required** and must be one of the team's domains: `code`, `render`, `diseno`, `arte`,
-  `redes`. A save with any other area is rejected by the server.
+  `redes`, or `general` (organization-level notes that belong to no single domain). A save with any
+  other area is rejected by the server.
 - `project` = concrete product or repo, e.g. `visualizador-inmobiliario` (optional).
 
-Call `mem_list_areas()` for the exact set. If you cannot name a Portales area for the work, that is a
-signal the work is not a Portales project — do not save (see "Only for Portales projects" above).
+Call `mem_list_areas()` for the exact set. `general` is not an escape for unrelated work: use it only
+for Portales-wide notes that fit no single domain. If the work is not Portales', do not save (see
+"Only for Portales projects" above).
 
 ## shared vs personal
 
