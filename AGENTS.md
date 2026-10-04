@@ -1,26 +1,23 @@
 # AGENTS.md — install the Portales memory
 
 This repository is **portales-memoria**, the Portales team's shared agent memory. This file is the
-install guide an agent can follow to connect a member's machine to it. The repo is public, so it can
-be read without cloning.
+install guide an agent follows to connect a member's machine. The repo is public; read it without
+cloning.
 
-## What to install
+## Your job
 
-- **MCP server** `portales-memory` — shared memory at
-  `https://vfjgwyiqlesbuudhulcf.supabase.co/functions/v1/mcp`, authenticated with a per-member bearer token.
-- **Skill** `skills/portales-memory/SKILL.md` — when to save, and the rule to save only for Portales projects.
+Install the MCP server and the skill, then hand the **token** step to the member. **Do not ask the
+member for their token, do not accept it, and do not write it into any file.** The config reads the
+token from the environment variable `PORTALES_MEMORY_TOKEN`, which the member sets themselves.
 
-## 1. Token
+1. Add the MCP server — section 1.
+2. Install the skill — section 2.
+3. Tell the member how to set their token and restart — section 3.
+4. Verify once they have restarted — section 4.
 
-Each member has a personal token (an admin runs `node scripts/add-member.mjs <name> portales` and prints
-it once). Export it; never commit it.
+## 1. Add the MCP server
 
-```sh
-export PORTALES_MEMORY_TOKEN="…"     # macOS/Linux
-$env:PORTALES_MEMORY_TOKEN = "…"     # Windows PowerShell
-```
-
-## 2. Connect the MCP server
+Endpoint: `https://vfjgwyiqlesbuudhulcf.supabase.co/functions/v1/mcp`
 
 **OpenCode** (`opencode.json`):
 
@@ -56,16 +53,35 @@ claude mcp add --transport http portales-memory \
 
 **Anything else** that supports remote MCP: same URL plus an `Authorization: Bearer <token>` header.
 
-## 3. Install the skill
+## 2. Install the skill
 
 Copy `skills/portales-memory/` into the harness skills directory — `~/.config/opencode/skills/`,
 `~/.claude/skills/`, or `~/.agents/skills/` — or reference `skills/portales-memory/SKILL.md` from the
 project's `AGENTS.md` / `CLAUDE.md`.
 
+## 3. Explain the token to the member (they do it, not you)
+
+Each member has a personal token. If they do not have one, tell them to ask an admin (the admin runs
+`node scripts/add-member.mjs <name> portales`, which prints the token once). Then tell the member to,
+themselves:
+
+1. Set it in their environment and never commit it:
+   - macOS/Linux (add to `~/.zshrc` or `~/.bashrc`, then reopen the terminal):
+     `export PORTALES_MEMORY_TOKEN="<their token>"`
+   - Windows PowerShell (persists for future sessions; reopen the terminal):
+     `setx PORTALES_MEMORY_TOKEN "<their token>"`
+2. Restart the harness so the environment and the MCP config load.
+
+Do not run these for them, do not ask them to paste the token into the chat, and do not store it in any
+file. The member owns the token.
+
 ## 4. Verify
 
-Call `mem_whoami`; it must return the member's name. A `401` means the token is missing or wrong.
-`mem_list_areas` / `mem_list_projects` should show the team's existing memory.
+After the member restarts, call `mem_whoami`; it must return their name. A `401` means the token is not
+set or is wrong — repeat section 3.
+
+- `mem_list_areas` → `code`, `render`, `diseno`, `arte`, `redes` (the valid `area` values).
+- `mem_list_projects` → the projects already in the team memory.
 
 ## CLI (optional)
 
