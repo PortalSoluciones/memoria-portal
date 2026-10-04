@@ -126,6 +126,8 @@ five core tools carry the value, and the rest can be added one handler at a time
       `areas`/`whoami`) as a fallback for local-only harnesses and for scripting.
 - [x] T9 — Keep-warm ping: a scheduled GitHub Action that hits the MCP endpoint with a dummy
       `Bearer` header so the function's members SELECT keeps the free-tier database active.
+- [x] T10 — Area allowlist: make `area` required and validated on `mem_save`/`mem_session_summary`
+      against the fixed set (`code`, `render`, `diseno`, `arte`, `redes`); `mem_list_areas` returns it.
 
 ## Authorized scope
 
@@ -147,6 +149,7 @@ keep-warm workflow `.github/workflows/keep-warm.yml`. No files outside this proj
 | T7 | delegated | a new skill doc plus install steps for several harnesses; one writer |
 | T8 | delegated | a new script with several subcommands; one writer |
 | T9 | inline | one trivial workflow YAML |
+| T10 | inline | a small function change in a file already read; no unresolved design |
 
 ## Acceptance criteria
 
@@ -156,6 +159,7 @@ keep-warm workflow `.github/workflows/keep-warm.yml`. No files outside this proj
 - `scope: personal` memories are invisible to the other member.
 - A `topic_key` re-save updates the existing row and bumps `revision_count` instead of inserting.
 - `mem_search` matches on content via Postgres FTS.
+- A save with a missing or unknown `area` is rejected; `mem_list_areas` returns the fixed set.
 - The whole thing runs on the Supabase free tier with no server the team operates.
 
 ## Progress
@@ -193,6 +197,11 @@ T9 applied: `.github/workflows/keep-warm.yml`, a daily scheduled curl with a dum
 Note: a request with no `Bearer` header returns 401 before any query, so the dummy token is required
 for the ping to actually run the function's members SELECT (the DB activity that prevents the
 free-tier pause).
+T10 applied: `area` is now required and validated on `mem_save` and `mem_session_summary` against the
+fixed set (`code`, `render`, `diseno`, `arte`, `redes`); `mem_list_areas` returns that set. A missing or
+unknown area is rejected with `area must be one of: ...`. Behavior change: org-wide saves with no area
+are no longer possible. Deployed. A deeper per-project allowlist is deferred: the server only sees the
+payload, so area-scoping is a backstop, not proof of the work's origin.
 
 ## Verification evidence
 
@@ -245,3 +254,6 @@ free-tier pause).
   the read-only verifier sub-agent was unavailable this session (runtime: free-tier model only usable
   within OpenCode). The writer self-verification and the parent checks above stand; the independent
   result is preserved as unavailable, not PASS.
+- T10: `supabase functions deploy mcp` OK (edge-runtime bundling validated the TS); `curl.exe` no token
+  → `401`. The area guard itself is code-reviewed; a live tool-call test needs a member token (none
+  available in this session), so it is not runtime-verified yet.

@@ -39,8 +39,8 @@ actual reply to the user, and a memory the user never sees in chat is not an ans
 | End of session | `mem_session_summary` |
 
 ```
-mem_save(title, content, type?, area?, project?, scope?, topic_key?)
-mem_session_summary(content, title?, area?, project?, scope?)
+mem_save(title, content, area, type?, project?, scope?, topic_key?)
+mem_session_summary(content, area, title?, project?, scope?)
 ```
 
 `type` defaults to `'manual'`. The author is always the token's member — never a parameter.
@@ -50,11 +50,12 @@ mem_session_summary(content, title?, area?, project?, scope?)
 The organization is always the caller's (`portales`) and is automatic — never pass it.
 Hierarchy: organization -> `area` -> `project`.
 
-- `area` = work domain. Already in use: `code`, `render`, `diseno`, `arte`, `redes`.
-- `project` = concrete product or repo, e.g. `visualizador-inmobiliario`.
+- `area` **is required** and must be one of the team's domains: `code`, `render`, `diseno`, `arte`,
+  `redes`. A save with any other area is rejected by the server.
+- `project` = concrete product or repo, e.g. `visualizador-inmobiliario` (optional).
 
-Omit both only for genuinely organization-wide memory. If unsure, call `mem_list_areas()` or
-`mem_list_projects(area?)`.
+Call `mem_list_areas()` for the exact set. If you cannot name a Portales area for the work, that is a
+signal the work is not a Portales project — do not save (see "Only for Portales projects" above).
 
 ## shared vs personal
 
