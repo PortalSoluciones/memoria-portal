@@ -205,6 +205,13 @@ org-scoped `mem_list_projects(area?)`; search and context default to the whole o
   - ana `mem_save` `scope:personal` → beto `mem_search "privada zzz"` → 0 results; ana → 1 result.
   - beto `mem_search author=ana "note"` → 1; `author=beto "note"` → 0.
   - beto `mem_list_projects` → `["portales"]`.
-- T6: `supabase db push` applied `20261003010000_hierarchy.sql`; `supabase functions deploy mcp` OK;
-  `curl.exe` with no token → `401 Unauthorized`. The hierarchy round-trip is not yet run (needs a
-  member token).
+- T6 verified live with the ana/beto tokens:
+  - `mem_whoami` (ana) → `{name:"ana", default_organization:"portales"}`.
+  - `mem_save area=code project=visualizador-inmobiliario` → `{id:3, revision_count:1}`;
+    `mem_save area=render` → `{id:4}`.
+  - beto `mem_search "memoria"` (no area) → both rows (cross-area reachable).
+  - beto `mem_search "memoria" area=code` → only id 3.
+  - beto `mem_list_areas` → `["code","render"]`; `mem_list_projects area=code` →
+    `["visualizador-inmobiliario"]`.
+- `supabase db push` applied `20261003010000_hierarchy.sql`; `supabase functions deploy mcp` OK;
+  `curl.exe` with no token → `401 Unauthorized`.

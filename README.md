@@ -52,6 +52,14 @@ SUPABASE_SECRET_KEY=<secret-key> \
 node scripts/remove-member.mjs ana
 ```
 
+Rotate a member's token (keeps their memories; the old token stops working):
+
+```sh
+SUPABASE_URL=https://vfjgwyiqlesbuudhulcf.supabase.co \
+SUPABASE_SECRET_KEY=<secret-key> \
+node scripts/rotate-token.mjs ana
+```
+
 ## Connect an agent
 
 The server is plain MCP, so any harness that supports remote MCP works. Set the member's token in
