@@ -128,6 +128,8 @@ five core tools carry the value, and the rest can be added one handler at a time
       `Bearer` header so the function's members SELECT keeps the free-tier database active.
 - [x] T10 — Area allowlist: make `area` required and validated on `mem_save`/`mem_session_summary`
       against the fixed set (`code`, `render`, `diseno`, `arte`, `redes`); `mem_list_areas` returns it.
+- [x] T11 — Add a `general` area for organization-level notes that belong to no single domain, in the
+      function constant, the `areaSchema` descriptions, and the skill/README/AGENTS docs.
 
 ## Authorized scope
 
@@ -150,6 +152,7 @@ keep-warm workflow `.github/workflows/keep-warm.yml`. No files outside this proj
 | T8 | delegated | a new script with several subcommands; one writer |
 | T9 | inline | one trivial workflow YAML |
 | T10 | inline | a small function change in a file already read; no unresolved design |
+| T11 | inline | one constant plus derived describe strings and doc lines; no unresolved design |
 
 ## Acceptance criteria
 
