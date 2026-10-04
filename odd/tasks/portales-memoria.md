@@ -119,11 +119,20 @@ five core tools carry the value, and the rest can be added one handler at a time
 - [x] T5 — End-to-end check: two tokens in the same project save, search, and attribute correctly.
 - [x] T6 — Hierarchy organization → area → project: rename/add-columns migration, function `area`/`project`
       params, `mem_list_areas` / `mem_list_projects`.
+- [x] T7 — Agent-agnostic memory skill: a repo-versioned `SKILL.md` teaching WHEN to save (decision,
+      bugfix, discovery, convention, end-of-session → `mem_session_summary`), how to choose
+      `area`/`project`, `shared` vs `personal`, and `topic_key`; install steps per harness.
+- [ ] T8 — Node CLI: a dependency-free CLI against the same MCP endpoint (`save`/`search`/`context`/
+      `areas`/`whoami`) as a fallback for local-only harnesses and for scripting.
+- [x] T9 — Keep-warm ping: a scheduled GitHub Action that hits the MCP endpoint with a dummy
+      `Bearer` header so the function's members SELECT keeps the free-tier database active.
 
 ## Authorized scope
 
 Project directory `D:\proyect\PortalesCode\portales-memoria`. Files: `supabase/migrations/*.sql`,
-`supabase/functions/mcp/index.ts`, `opencode.json`, and `README.md`. No files outside this project.
+`supabase/functions/mcp/index.ts`, `opencode.json`, and `README.md`. T7/T8 add a versioned skill
+directory (e.g. `skills/portales-memory/SKILL.md`), a CLI script (e.g. `scripts/mem.mjs`), and the
+keep-warm workflow `.github/workflows/keep-warm.yml`. No files outside this project.
 
 ## Route per task
 
@@ -135,6 +144,9 @@ Project directory `D:\proyect\PortalesCode\portales-memoria`. Files: `supabase/m
 | T4 | inline | one config file plus a short README |
 | T5 | inline | a two-token check against the live endpoint |
 | T6 | delegated | a migration plus a multi-site function change; one writer |
+| T7 | delegated | a new skill doc plus install steps for several harnesses; one writer |
+| T8 | delegated | a new script with several subcommands; one writer |
+| T9 | inline | one trivial workflow YAML |
 
 ## Acceptance criteria
 
@@ -173,6 +185,14 @@ scope/topic indexes (topic uniqueness uses `coalesce(area,'')`/`coalesce(project
 gained `area`/`project` params on `mem_save`/`mem_search`/`mem_context`, plus `mem_list_areas` and an
 org-scoped `mem_list_projects(area?)`; search and context default to the whole organization.
 `scripts/add-member.mjs` and `seed.sql` were updated to the renamed column.
+T7 applied: `skills/portales-memory/SKILL.md`, an agent-agnostic skill teaching when to save (decision,
+bugfix, discovery, convention, config, preference, end-of-session → `mem_session_summary`), how to
+choose `area`/`project`, `shared` vs `personal`, `topic_key`, start-of-work recall, and per-harness
+installation. Tool signatures were cross-checked against the function schemas.
+T9 applied: `.github/workflows/keep-warm.yml`, a daily scheduled curl with a dummy `Bearer` header.
+Note: a request with no `Bearer` header returns 401 before any query, so the dummy token is required
+for the ping to actually run the function's members SELECT (the DB activity that prevents the
+free-tier pause).
 
 ## Verification evidence
 
@@ -215,3 +235,9 @@ org-scoped `mem_list_projects(area?)`; search and context default to the whole o
     `["visualizador-inmobiliario"]`.
 - `supabase db push` applied `20261003010000_hierarchy.sql`; `supabase functions deploy mcp` OK;
   `curl.exe` with no token → `401 Unauthorized`.
+- T7: skill read back; frontmatter (`name`, `description`) present; every tool/param matches
+  `supabase/functions/mcp/index.ts`; no invented features.
+- T9: `keep-warm.yml` parsed with `yaml.safe_load` (OK); live check — request with
+  `Authorization: Bearer keep-warm` → `401` (the members SELECT runs before the 401), and no:
+  `Bearer` → `401` (early return, no query). Confirms the dummy-token mechanism is what keeps the
+  project active.
